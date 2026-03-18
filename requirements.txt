@@ -6,5 +6,5 @@ langchain-ollama
 langchain-community
 
 langchain-text-splitters
-langchain-chroma
+# langchain-chroma
 unstructured[docx,pdf]
