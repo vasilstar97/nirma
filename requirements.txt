@@ -6,5 +6,6 @@ langchain-ollama
 langchain-community
 
 langchain-text-splitters
-# langchain-chroma
-unstructured[docx,pdf]
+unstructured[docx,pdf] # for documents parsing
+ddgs # for duckduckgo web search
+wikipedia # for wikipedia web search
