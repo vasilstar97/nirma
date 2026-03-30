@@ -1,7 +1,7 @@
-from langchain.tools import tool
 from ._prompts import SELF_PROMPT, BOARD_PROMPT
 from ..role import Role, RoleAgent
 from ...board import Board, BaseNote
+from ...tools import ddgs_tool
 
 EXPERT_PROMPT = """
 Вы выдающийся специалист:
@@ -18,7 +18,7 @@ def create_expert_agent(role : Role, board : Board):
     agent = RoleAgent(
         role=role,
         system_prompt=system_prompt,
-        tools=board.tools,
+        tools=[*board.get_ro_tools(), ddgs_tool],
         response_format=BaseNote,
     )
     return agent

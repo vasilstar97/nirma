@@ -19,7 +19,7 @@ class Agent():
         response_format : type[BaseModel] | None = None,
         checkpointer : InMemorySaver | None = None,
         summarization_tokens : int = 4000, 
-        summarization_keep : int = 2,
+        summarization_keep : int = 10,
         **kwargs
     ):
         self.id = id_ or get_id()

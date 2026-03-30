@@ -1,26 +1,21 @@
 from pydantic import BaseModel, Field
 from langchain.tools import tool
-from .note import BaseNote, Note
+from .note import Note
 
 class Board(BaseModel):
     question : str = Field(description='Вопрос пользователя')
-    notes : list[BaseNote] = Field(default=[], description='Список записей')
+    notes : list[Note] = Field(default=[], description='Список записей')
 
-    def get_notes(self, last_n : int | None = None) -> list[dict]:
+    def get_notes(self) -> list[dict]:
         """
         Возвращает список актуальных записей на доске с краткой информацией.
-        Если передан last_n, вернет последние last_n записей.
         """
-        notes = [{
+        return [{
             'id': note.id,
             'author_id': note.author_id,
             'author_role': note.author_role,
-            'summary': note.summary,
-            'keywords': note.keywords
+            'preview': note.preview,
         } for note in self.notes]
-        if last_n is not None:
-            notes = notes[-last_n:]
-        return notes
     
     def get_note(self, note_id : str) -> Note | None:
         """
@@ -32,12 +27,12 @@ class Board(BaseModel):
             return None
         return notes[0]
     
-    def add_note(self, note : BaseNote, author_id : str, author_role : str) -> str:
+    def add_note(self, content : str, author_id : str, author_role : str) -> str:
         """
         Добавляет запись на доску.
-        Возвращает id записи.
+        Возвращает ID записи.
         """
-        note = Note(author_id=author_id, author_role=author_role, **note.model_dump())
+        note = Note(content=content, author_id=author_id, author_role=author_role)
         self.notes.append(note)
         return note.id
     
@@ -47,26 +42,29 @@ class Board(BaseModel):
     def remove_notes(self, notes_ids : list[str]):
         self.notes = [n for n in self.notes if n.id not in notes_ids]
 
-    def print(self, color = 'yellow', width : int = 100):
-        from rich import print
-        from rich.panel import Panel
-
+    def print(self, *args, **kwargs):
         for note in self.notes:
-            panel_title = f"📌 {note.author_role} [{note.author_id}]"
-            panel_content = '\n\n---\n\n'.join([note.summary, note.content, str.join(', ', note.keywords)])
-            
-            print(Panel(
-                panel_content,
-                title=panel_title,
-                border_style=color,
-                width=width
-            ))
+            note.print(*args, **kwargs)
 
     @property
     def tools(self):
         return [
             tool(self.get_notes),
             tool(self.get_note)
+        ]
+    
+    def get_ro_tools(self):
+        return [
+            tool(self.get_notes),
+            tool(self.get_note)
+        ]
+    
+    def get_rw_tools(self):
+        ro_tools = self.get_ro_tools()
+
+        return [
+            *ro_tools,
+            tool(self.add_note)
         ]
 
 __all__=[

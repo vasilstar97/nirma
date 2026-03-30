@@ -1,8 +1,7 @@
 from pydantic import BaseModel, Field
-from langchain.tools import tool
 from ._prompts import SELF_PROMPT, BOARD_PROMPT
 from ..role import Role, RoleAgent
-from ...board import Board, BaseNote
+from ...board import Board
 
 CLEANER_PROMPT = """
 Проанализируйте записи на общей доске и определите любые бесполезные или избыточные.
@@ -21,9 +20,7 @@ _role = Role(
     description=ROLE_DESCRIPTION
 )
 
-
 class CleanerResponse(BaseModel):
-    note : BaseNote = Field(description='Запись для добавления на доску')
     notes_ids : list[str] = Field(default=[], description='Список ID записей к удалению')
 
 def create_cleaner_agent(board : Board):
@@ -31,7 +28,7 @@ def create_cleaner_agent(board : Board):
     agent = RoleAgent(
         role=_role,
         system_prompt=system_prompt,
-        tools=board.tools,
+        tools=board.get_ro_tools(),
         response_format=CleanerResponse,
     )
     return agent

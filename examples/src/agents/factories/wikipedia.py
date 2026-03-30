@@ -1,6 +1,6 @@
 from ._prompts import SELF_PROMPT, BOARD_PROMPT
 from ...searcher.wikipedia import WikipediaSearcher
-from ...board import Board, BaseNote
+from ...board import Board
 from ..role import Role, RoleAgent
 
 WIKIPEDIA_PROMPT = """
@@ -29,6 +29,6 @@ def create_wikipedia_agent(searcher : WikipediaSearcher, board : Board):
             *board.tools,
             *searcher.tools
         ],
-        response_format=BaseNote,
+        # response_format=BaseNote,
     )
     return agent

@@ -1,5 +1,3 @@
-from pydantic import BaseModel, Field
-from langchain.tools import tool
 from ._prompts import SELF_PROMPT, BOARD_PROMPT
 from ..role import Role, RoleAgent
 from ...board import Board, BaseNote
@@ -23,7 +21,7 @@ def create_critic_agent(board : Board):
     agent = RoleAgent(
         role=_role,
         system_prompt=system_prompt,
-        tools=board.tools,
+        tools=board.get_ro_tools(),
         response_format=BaseNote,
     )
     return agent

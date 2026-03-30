@@ -1,0 +1,1 @@
+from .ddgs import ddgs_tool
