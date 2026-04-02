@@ -1,20 +1,20 @@
 import os
-from langchain_openai import ChatOpenAI
-from langchain_ollama import OllamaEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
 
 llm = ChatOpenAI(
     model=os.getenv('CHAT_MODEL'),
-    base_url=os.getenv('BASE_URL') + '/v1',
-    temperature=os.getenv('TEMPERATURE'),
-    api_key=os.getenv('BASE_URL')
+    base_url=os.getenv('CHAT_URL'),
+    api_key=os.getenv('CHAT_API_KEY'),
+    temperature=os.getenv('CHAT_TEMPERATURE'),
 )
 
-embedding = OllamaEmbeddings(
-    model=os.getenv('EMBEDDING_MODEL'), 
-    base_url=os.getenv('BASE_URL')
+embedding = OpenAIEmbeddings(
+    model=os.getenv('EMBEDDING_MODEL'),
+    base_url=os.getenv('EMBEDDING_URL'),
+    api_key=os.getenv('EMBEDDING_API_KEY')
 )
 
 __all__ = [
