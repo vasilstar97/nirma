@@ -7,8 +7,8 @@ from .llms import llm
 from .utils import get_id
 
 SUMMARIZATION_KWARGS = {
-    'trigger': ('tokens', 4000),
-    'keep': ('messages', 10)
+    'trigger': ('tokens', 30000),
+    'keep': ('messages', 15)
 }
 STRUCTURED_RESPONSE_KEY = 'structured_response'
 MESSAGES_KEY = 'messages'

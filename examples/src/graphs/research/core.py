@@ -3,6 +3,8 @@ from operator import or_, add
 from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, START, END
 
+MAX_ITERS = 1
+
 class Params(BaseModel):
     location : str
     year : int
@@ -13,6 +15,7 @@ class GraphState(TypedDict):
     tasks : list
     results : Annotated[dict, or_]
     result : dict
+    max_iters : int
 
 def init(state : GraphState):
     params = Params(**state['params'])
@@ -20,7 +23,8 @@ def init(state : GraphState):
     return {
         'params': params,
         'tasks': tasks,
-        'results': {}
+        'results': {},
+        'max_iters': state.get('max_iters', MAX_ITERS)
     }
 
 def gate(state : GraphState):
@@ -45,8 +49,8 @@ def get_worker(i : int, qa_graph):
                 'year': params.year,
                 'topic': topic,
                 'question': question
-            }})
-            result = state['messages'][-1]
+            }, 'max_iters': state['max_iters']})
+            result = state['result']
             return {
                 'results': {(topic, question): result}
             }

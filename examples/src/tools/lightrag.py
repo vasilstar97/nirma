@@ -5,8 +5,9 @@ from langchain.tools import tool
 def lightrag_tool(query : str):
     """
     Поиск по документам в LightRAG
+    Если возвращает ошибку, попробуйте позже или воспользуйтесь другим инструментом.
     """
-    res = requests.post('http://localhost:9621/query', json={
+    json = {
         'query': query,
         'mode': 'mix',
         'only_need_context': True,
@@ -17,5 +18,9 @@ def lightrag_tool(query : str):
         'enable_rerank': False,
         'include_references': True,
         'include_chunk_content': True
-    })
-    return res.text
+    }
+    try:
+        res = requests.post('http://localhost:9621/query', json=json, timeout=10)
+        return res.text
+    except Exception as e:
+        return str(e)
