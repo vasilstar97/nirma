@@ -82,7 +82,8 @@ class Agent():
     
     @property
     def system_prompt(self):
-        return self._system_prompt.format(**self.metadata)
+        return self._system_prompt
+        # return self._system_prompt.format(**self.metadata)
     
     @property
     def runnable_config(self):
