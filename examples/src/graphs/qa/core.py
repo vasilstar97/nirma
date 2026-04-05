@@ -1,112 +1,91 @@
-from typing import Annotated, TypedDict
-from operator import add
+from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel, Field
-from ._prompts import *
-from ...llms import llm
+from typing import TypedDict, Annotated
+from operator import add
 from ...agent import Agent
+from ._prompts import *
+from ...tools import lightrag_tool, ddgs_tool
+
+MAX_ITER = 3
+TOOLS = [lightrag_tool, ddgs_tool]
+
+class Params(BaseModel):
+    location : str
+    year : int
+    topic : str
+    question : str
 
 class GraphState(TypedDict):
-    main_question : str
-    _questions : list[str]
-    _question : str
-    _results : Annotated[list, add]
-    final_answer : str
-    iterations : int
-    _iteration : int
-    
-class PlannerResponse(BaseModel):
-    questions : list[str] = Field(description='Перечень вопросов')
+    params : Params
+    tools : list
+    max_iters : int
+    curr_iter : int
+    messages : Annotated[list[str], add]
+    actor : Agent
+    critic : Agent
 
-def invoke_master(state : GraphState):
+def init(state : GraphState):
+    params = Params(**state['params'])
+    tools = state.get('tools', TOOLS)
+    max_iters = state.get(MAX_ITER, 3)
+
+    actor = Agent(
+        system_prompt=ACTOR_PROMPT.format(**params.model_dump()),
+        tools=tools,
+        is_checkpointer=True
+    )
+    critic = Agent(
+        system_prompt=CRITIC_PROMPT.format(**params.model_dump()),
+        tools=tools,
+        is_checkpointer=True
+    )
+
     return {
-        '_questions': [],
-        '_results': [],
-        '_iteration': 1,
-        'iterations': state.get('iterations', 3)
+        'params': params,
+        'tools': tools,
+        'max_iters': max_iters,
+        'curr_iter': 0,
+        'messages': [],
+        'actor': actor,
+        'critic': critic
     }
 
-def invoke_planner(state : GraphState):
-    iterations = state['iterations']
-    iteration = state['_iteration']
-    if iteration >= iterations:
+def get_invoke(agent_name : str):
+
+    def invoke(state : GraphState):
+        messages = state['messages']
+        agent = state[agent_name]
+        res = agent.invoke([m for m in messages[-1:]])
         return {
-            '_questions': []
+            'messages': [res]
         }
     
-    message = PLANNER_MESSAGE.format(**state)
-    structured_llm = llm.with_structured_output(PlannerResponse)
+    return invoke
+
+def loop(state : GraphState):
     return {
-        '_questions': structured_llm.invoke(message).questions,
-        '_iteration': iteration + 1
+        'curr_iter': state['curr_iter'] + 1
     }
 
-def invoke_chooser(state : GraphState):
-    questions = state['_questions']
-    return {
-        '_questions': questions[1:],
-        '_question': questions[0]
-    }
+def loop_conditional_edges(state : GraphState):
+    max_iters = state['max_iters']
+    curr_iter = state['curr_iter']
+    if curr_iter == max_iters:
+        return END
+    return 'critic'
 
-def create_invoke_agent(tools : list):
-
-    agent = Agent(system_prompt=AGENT_PROMPT, tools=tools)
-
-    def invoke_agent(state : GraphState):
-        question = state['_question']
-        res = agent.invoke(question)
-        return {
-            '_results': [{
-                'question': question,
-                'answer': res
-            }]
-        }
-    
-    return invoke_agent
-
-def invoke_gate(state : GraphState):
-    return {}
-
-def invoke_finalizer(state : GraphState):
-    message = FINALIZER_MESSAGE.format(**state)
-    return {
-        'final_answer': llm.invoke(message)
-    }
-
-from langgraph.graph import StateGraph, START, END
-from ...tools import ddgs_tool
-
-def planner_condition(state : GraphState):
-    questions = state['_questions']
-    if len(questions) > 0:
-        return 'chooser'
-    return 'finalizer'
-
-def gate_condition(state : GraphState):
-    questions = state['_questions']
-    if len(questions) > 0:
-        return 'chooser'
-    return 'planner'
-
-def create_qa_graph(n_agents : int = 1):
+def create_qa_graph(**compile_kwargs):
     graph = StateGraph(GraphState)
-    graph.add_node('master', invoke_master)
-    graph.add_node('planner', invoke_planner)
-    graph.add_node('chooser', invoke_chooser)
-    graph.add_node('gate', invoke_gate)
-    graph.add_node('finalizer', invoke_finalizer)
 
-    for i in range(n_agents):
-        name = f'agent_{i+1}'
-        invoke_agent = create_invoke_agent([ddgs_tool])
-        graph.add_node(name, invoke_agent)
-        graph.add_edge('chooser', name)
-        graph.add_edge(name, 'gate')
+    graph.add_node('init', init)
+    graph.add_node('actor', get_invoke('actor'))
+    graph.add_node('loop', loop)
+    graph.add_node('critic', get_invoke('critic'))
 
-    graph.add_edge(START, 'master')
-    graph.add_edge('master', 'planner')
-    graph.add_conditional_edges('planner', planner_condition, ['chooser', 'finalizer'])
-    graph.add_conditional_edges('gate', gate_condition, ['chooser', 'planner'])
-    graph.add_edge('finalizer', END)
+    graph.add_edge(START, 'init')
+    graph.add_edge('init', 'actor')
+    graph.add_edge('actor', 'loop')
+    graph.add_conditional_edges('loop', loop_conditional_edges, [END, 'critic'])
+    graph.add_edge('critic', 'actor')
 
-    return graph
-
+    return graph.compile(**compile_kwargs)
