@@ -9,6 +9,8 @@ llm = ChatOpenAI(
     base_url=os.getenv('CHAT_URL'),
     api_key=os.getenv('CHAT_API_KEY'),
     temperature=os.getenv('CHAT_TEMPERATURE'),
+    timeout=300,
+    max_retries=3
 )
 
 embedding = OpenAIEmbeddings(
